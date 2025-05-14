@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 
 class UserService {
-  static const String baseUrl = 'http://192.168.100.39:3000/users';
+  static const String baseUrl = 'http://192.168.100.142:3000/users';
 
   // Metode untuk mengenkripsi password menggunakan SHA-256
   String hashPassword(String password) {

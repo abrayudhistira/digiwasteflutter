@@ -19,6 +19,19 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 2;
 
+  final List<Map<String, String>> _newsData = [
+    {
+      'imageUrl': 'https://asset.kompas.com/crops/vet4_SnwxO9NP-l193Bsvo2mc0k=/0x0:0x0/1200x800/data/photo/2023/01/18/63c78ce7a757a.jpg',
+      'title': 'Ketika Bandung Darurat Sampah (Lagi)',
+      'date': '9 Mei 2025',
+    },
+    {
+      'imageUrl': 'https://asset.kompas.com/crops/LSv7c6NLPAOuufnbjPheT8SlVgg=/0x0:0x0/1200x800/data/photo/2025/05/09/681d9cae2d708.jpg',
+      'title': 'Cerita Warga Yogyakarta Kesulitan Buang Sampah',
+      'date': '8 Mei 2025',
+    },
+  ];
+
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
 
@@ -212,9 +225,25 @@ class _DashboardState extends State<Dashboard> {
         ),
         SizedBox(
           height: 200,
-          child: Center(
-            child: Text('Tidak ada berita terbaru', style: TextStyle(fontSize: 16, color: Colors.grey)),
-          ),
+          child: _newsData.isEmpty 
+            ? Center(
+                child: Text('Tidak ada berita terbaru', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              )
+            : ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _newsData.length,
+                itemBuilder: (context, index) {
+                  final news = _newsData[index];
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _NewsCard(
+                      imageUrl: news['imageUrl']!,
+                      title: news['title']!,
+                      date: news['date'] ?? 'Tanggal tidak tersedia',
+                    ),
+                  );
+                },
+              ),
         ),
       ],
     );
@@ -239,6 +268,53 @@ class _DashboardIcon extends StatelessWidget {
           const SizedBox(height: 8),
           Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+class _NewsCard extends StatelessWidget {
+  final String imageUrl;
+  final String title;
+  final String date;
+
+  const _NewsCard({required this.imageUrl, required this.title, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: SizedBox(
+        width: 220,
+        height: 180,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+              child: Image.network(
+                imageUrl, height: 100, 
+                width: double.infinity, 
+                fit: BoxFit.cover),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, 
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(date, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

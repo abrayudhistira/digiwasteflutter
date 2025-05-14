@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../model/User.dart';
 
 class UserProfileService {
-  static const String baseUrl = 'http://192.168.100.39:3000/users';
+  static const String baseUrl = 'http://192.168.100.142:3000/users';
 
   // Fungsi untuk update user
   Future<User?> updateUser(User user) async {

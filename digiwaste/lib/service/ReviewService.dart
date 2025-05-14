@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../model/Review.dart';
 
 class ReviewService {
-  final String baseUrl = 'http://192.168.100.39:3000/review/new';
+  final String baseUrl = 'http://192.168.100.142:3000/review/new';
 
   Future<void> createReview(Review review) async {
     final response = await http.post(

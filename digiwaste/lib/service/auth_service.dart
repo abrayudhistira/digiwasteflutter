@@ -7,11 +7,11 @@ import '../model/User.dart';
 
 class AuthService {
   // URL untuk operasi login dan pengambilan data user
-  final String baseUrl = 'http://192.168.100.39:3000/users';
+  final String baseUrl = 'http://192.168.100.142:3000/users';
   // URL untuk registrasi
-  final String registerUrl = 'http://192.168.100.39:3000/users/new';
+  final String registerUrl = 'http://192.168.100.142:3000/users/new';
   // URL untuk update profil
-  final String updateUrl = 'http://192.168.100.39:3000/users/edit';
+  final String updateUrl = 'http://192.168.100.142:3000/users/edit';
 
   // Secret key untuk AES (harus 16, 24, atau 32 karakter; disini kita gunakan 32 karakter)
   final encrypt.Key _key = encrypt.Key.fromUtf8('my32lengthsupersecretnooneknows1');
