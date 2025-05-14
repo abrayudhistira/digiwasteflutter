@@ -7,6 +7,7 @@ import 'package:digiwaste/user/RiwayatPembelian.dart';
 import 'package:digiwaste/user/Ulasan.dart';
 import 'package:digiwaste/user/Notifikasi.dart';
 import 'package:digiwaste/user/UserProfile.dart';
+import 'dart:convert';
 
 class Dashboard extends StatefulWidget {
   final User user;
@@ -103,32 +104,62 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      color: Colors.grey[300],
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(left: 135, top: 30),
-            child: Text('DigiWaste', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+  // Tentukan ImageProvider berdasarkan format foto
+  ImageProvider avatarImage;
+  final foto = widget.user.foto;
+  if (foto != null && foto.isNotEmpty) {
+    if (foto.startsWith('data:image')) {
+      // Base64 → MemoryImage
+      final base64Str = foto.split(',').last;
+      final bytes = base64Decode(base64Str);
+      avatarImage = MemoryImage(bytes);
+    } else {
+      // Anggap URL
+      avatarImage = NetworkImage(foto);
+    }
+  } else {
+    // Placeholder asset
+    avatarImage = const AssetImage('assets/default_avatar.png');
+  }
+
+  return Container(
+    width: double.infinity,
+    color: Colors.grey[300],
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Center(
+          child: Text(
+            'DigiWaste',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.account_circle, size: 40),
-              SizedBox(width: 8),
-              Text(
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundImage: avatarImage,
+              // jika mau, bisa tambahkan fallback saat error
+              onBackgroundImageError: (_, __) {
+                setState(() {}); // paksa rebuild pakai default_avatar
+              },
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
                 'Hai, ${widget.user.namaLengkap}',
                 style: const TextStyle(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildSearchBar() {
     return Padding(

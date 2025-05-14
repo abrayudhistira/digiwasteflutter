@@ -5,10 +5,11 @@ import 'package:digiwaste/model/User.dart';
 import 'package:digiwaste/user/Dashboard.dart';
 import 'package:digiwaste/user/Login.dart';
 import 'package:digiwaste/service/auth_service.dart';
+import 'dart:convert';
 
 class UserProfilePage extends StatefulWidget {
   final User user;
-  const UserProfilePage({super.key, required this.user});
+  const UserProfilePage({Key? key, required this.user}) : super(key: key);
 
   @override
   _UserProfilePageState createState() => _UserProfilePageState();
@@ -22,6 +23,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
   File? _image;
   final AuthService _authService = AuthService();
 
@@ -32,185 +34,209 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _usernameController.text = widget.user.username;
     _nomorTeleponController.text = widget.user.nomorTelepon;
     _emailController.text = widget.user.email;
-    // Tampilkan password asli dengan mendekripsi password yang tersimpan
+    // Tampilkan password asli
     _passwordController.text = _authService.decryptPassword(widget.user.password);
   }
 
+  @override
+  void dispose() {
+    // bersihkan controller
+    _namaController.dispose();
+    _usernameController.dispose();
+    _nomorTeleponController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _updateUser() async {
+    // Tutup keyboard / lepaskan fokus
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) return;
 
-    // Buat objek User baru dengan data input terbaru
-    User updatedUser = User(
+    setState(() => _isLoading = true);
+
+    // Buat objek User baru
+    final updatedUser = User(
       id: widget.user.id,
-      namaLengkap: _namaController.text,
-      username: _usernameController.text,
-      nomorTelepon: _nomorTeleponController.text,
-      email: _emailController.text,
+      foto: widget.user.foto,
+      namaLengkap: _namaController.text.trim(),
+      username: _usernameController.text.trim(),
+      nomorTelepon: _nomorTeleponController.text.trim(),
+      email: _emailController.text.trim(),
       password: _passwordController.text,
       role: widget.user.role,
-      foto: widget.user.foto, // Gunakan foto lama, atau nanti bisa disesuaikan jika _image dipilih
     );
 
-    bool success = await _authService.updateUser(updatedUser, _image);
+    final success = await _authService.updateUser(updatedUser, _image);
+
+    setState(() => _isLoading = false);
+
     if (success) {
-      // Setelah update, ambil data terbaru dari server
-      User? refreshedUser = await _authService.getUserById(updatedUser.id);
+      // Ambil data terbaru
+      final refreshedUser = await _authService.getUserById(updatedUser.id);
       if (refreshedUser != null) {
-        // Navigasi ke Dashboard dengan data terbaru
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => Dashboard(user: refreshedUser)),
+          MaterialPageRoute(builder: (_) => Dashboard(user: refreshedUser)),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memperbarui profil!')),
-        );
+        return;
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal memperbarui profil!')),
-      );
     }
+
+    // Jika gagal update atau gagal refresh
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success
+        ? 'Gagal memuat data terbaru'
+        : 'Gagal memperbarui profil')),
+    );
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => _image = File(picked.path));
     }
   }
 
   void _togglePasswordVisibility() {
-    setState(() {
-      _isPasswordVisible = !_isPasswordVisible;
-    });
+    setState(() => _isPasswordVisible = !_isPasswordVisible);
   }
 
   @override
   Widget build(BuildContext context) {
+    late ImageProvider avatarImage;
+    final foto = widget.user.foto;
+    if (foto != null && foto.isNotEmpty) {
+      if (foto.startsWith('data:image')) {
+        // Base64 string → decode ke bytes
+        final base64Str = foto.split(',').last;
+        final bytes = base64Decode(base64Str);
+        avatarImage = MemoryImage(bytes);
+      } else {
+        // Asumsikan URL
+        avatarImage = NetworkImage(foto);
+      }
+    } else {
+      // Fallback ke asset
+      avatarImage = const Icon(Icons.account_circle) as ImageProvider<Object>;
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DigiWaste'),
+        title: const Text('Profil Saya'),
         backgroundColor: Colors.grey[300],
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Foto Profil dengan kemampuan memilih dari galeri
+              // Avatar & pick image
               GestureDetector(
                 onTap: _pickImage,
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: _image != null
-                      ? FileImage(_image!)
-                      : (widget.user.foto != null && widget.user.foto!.isNotEmpty
-                          ? NetworkImage(widget.user.foto!)
-                          : const AssetImage("assets/default_avatar.png") as ImageProvider),
+                  backgroundImage: avatarImage,
+                  onBackgroundImageError: (_, __) {
+                    // jika error loading image, pakai default
+                    setState(() {});
+                  },
                   child: _image == null
                       ? const Icon(Icons.camera_alt, size: 30, color: Colors.white)
                       : null,
                 ),
               ),
               const SizedBox(height: 20),
-              // Nama Lengkap
+
+              // Fields
               TextFormField(
                 controller: _namaController,
-                decoration: const InputDecoration(labelText: "Nama Lengkap"),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Nama lengkap tidak boleh kosong";
-                  }
-                  return null;
-                },
+                decoration: const InputDecoration(labelText: 'Nama Lengkap'),
+                validator: (v) => (v?.trim().isEmpty ?? true)
+                  ? 'Nama tidak boleh kosong' : null,
               ),
-              // Username
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(labelText: "Username"),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Username tidak boleh kosong";
-                  }
-                  return null;
-                },
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: (v) => (v?.trim().isEmpty ?? true)
+                  ? 'Username tidak boleh kosong' : null,
               ),
-              // Nomor Telepon
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _nomorTeleponController,
-                decoration: const InputDecoration(labelText: "Nomor Telepon"),
+                decoration: const InputDecoration(labelText: 'Nomor Telepon'),
                 keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Nomor telepon tidak boleh kosong";
-                  }
-                  return null;
-                },
+                validator: (v) => (v?.trim().isEmpty ?? true)
+                  ? 'Nomor telepon tidak boleh kosong' : null,
               ),
-              // Email
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: "Email"),
+                decoration: const InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Email tidak boleh kosong";
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return "Format email tidak valid";
-                  }
-                  return null;
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email tidak boleh kosong';
+                  final pattern = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                  return pattern.hasMatch(v) ? null : 'Format email tidak valid';
                 },
               ),
-              // Password dengan toggle visibility
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _passwordController,
                 decoration: InputDecoration(
-                  labelText: "Password",
+                  labelText: 'Password',
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off
                     ),
                     onPressed: _togglePasswordVisibility,
                   ),
                 ),
                 obscureText: !_isPasswordVisible,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return "Password tidak boleh kosong";
-                  }
-                  if (value.length < 6) {
-                    return "Password minimal 6 karakter";
-                  }
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Password tidak boleh kosong';
+                  if (v.length < 6) return 'Password minimal 6 karakter';
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
-              // Tombol Simpan untuk update profil
-              ElevatedButton(
-                onPressed: _updateUser,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
-                  textStyle: const TextStyle(fontSize: 18),
-                ),
-                child: const Text("Simpan"),
-              ),
               const SizedBox(height: 24),
+
+              // Tombol Simpan
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _updateUser,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                  child: _isLoading
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Simpan'),
+                ),
+              ),
+
+              const SizedBox(height: 16),
               // Tombol Logout
-              ElevatedButton(
-                onPressed: () async {
-                  await _authService.logout();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  );
-                },
-                child: const Text('Logout'),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await _authService.logout();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  child: const Text('Logout'),
+                ),
               ),
             ],
           ),

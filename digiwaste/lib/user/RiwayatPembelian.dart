@@ -1,83 +1,53 @@
+import 'package:digiwaste/service/RiwayatService.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:digiwaste/model/User.dart';
-import 'package:digiwaste/user/LokasiBankSampah.dart';
-import 'package:digiwaste/user/Notifikasi.dart';
-import 'package:digiwaste/user/Dashboard.dart';
-import 'package:digiwaste/user/UserProfile.dart';
+import 'package:digiwaste/model/Riwayat.dart';
+import 'package:digiwaste/service/RiwayatService.dart';
+import 'LokasiBankSampah.dart';
+import 'Dashboard.dart';
+import 'Notifikasi.dart';
+import 'UserProfile.dart';
 
 class RiwayatPembelianPage extends StatefulWidget {
   final User user;
-  
-  const RiwayatPembelianPage({super.key, required this.user});
+  const RiwayatPembelianPage({Key? key, required this.user}) : super(key: key);
 
   @override
   State<RiwayatPembelianPage> createState() => _RiwayatPembelianPageState();
 }
 
 class _RiwayatPembelianPageState extends State<RiwayatPembelianPage> {
-  final List<Map<String, String>> riwayatPembelian = [
-    {
-      'tanggal': '18 Mei 2025',
-      'waktu': '18.25',
-      'nama': 'Abra Yudhistira Rachmadi',
-      'noHp': '087840866596',
-      'total': 'Rp85.000',
-    },
-    {
-      'tanggal': '17 Mei 2025',
-      'waktu': '14.10',
-      'nama': 'Abra Yudhistira Rachmadi',
-      'noHp': '087840866596',
-      'total': 'Rp75.000',
-    },
-    {
-      'tanggal': '16 Mei 2025',
-      'waktu': '10.45',
-      'nama': 'Abra Yudhistira Rachmadi',
-      'noHp': '087840866596',
-      'total': 'Rp65.000',
-    },
-  ];
-
+  late Future<List<Riwayat>> _futureRiwayat;
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureRiwayat = RiwayatService().fetchAll();
+  }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-
     setState(() => _selectedIndex = index);
 
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => RiwayatPembelianPage(user: widget.user)),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => LokasiBankSampah(user: widget.user)),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => Dashboard(user: widget.user)),
-        );
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => NotifikasiPage(user: widget.user)),
-        );
-        break;
-      case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => UserProfilePage(user: widget.user)),
-        );
-        break;
-    }
+    final pages = <Widget>[
+      RiwayatPembelianPage(user: widget.user),
+      LokasiBankSampah(user: widget.user),
+      Dashboard(user: widget.user),
+      NotifikasiPage(user: widget.user),
+      UserProfilePage(user: widget.user),
+    ];
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => pages[index]),
+    );
+  }
+
+  String _formatDate(DateTime dt) {
+    // contoh: 18 Mei 2025
+    return DateFormat('dd MMMM yyyy', 'id').format(dt);
   }
 
   @override
@@ -91,47 +61,99 @@ class _RiwayatPembelianPageState extends State<RiwayatPembelianPage> {
         ),
         centerTitle: true,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: riwayatPembelian.length,
-        itemBuilder: (context, index) {
-          final riwayat = riwayatPembelian[index];
-          return Card(
-            color: Colors.grey[300],
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tanggal: ${riwayat['tanggal']}', style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 4),
-                  Text('Waktu: ${riwayat['waktu']}', style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Text('Nama Lengkap: ${riwayat['nama']}', style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 4),
-                  Text('No. Hp: ${riwayat['noHp']}', style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 4),
-                  Text('Total: ${riwayat['total']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
+      body: FutureBuilder<List<Riwayat>>(
+        future: _futureRiwayat,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          final riwayats = snapshot.data!;
+          if (riwayats.isEmpty) {
+            return const Center(child: Text('Belum ada riwayat pembelian'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: riwayats.length,
+            itemBuilder: (context, index) {
+              final r = riwayats[index];
+              return Card(
+                color: Colors.grey[200],
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Id : ${r.idTransaksi}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tanggal: ${_formatDate(r.tanggal)}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Waktu: ${r.waktu}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Total: Rp${r.total}',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Status: ${r.status}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      Icon(Icons.done_rounded)
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Riwayat'),
-          BottomNavigationBarItem(icon: Icon(Icons.location_on), label: 'Lokasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifikasi'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Riwayat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.location_on),
+            label: 'Lokasi',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: 'Notifikasi',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
         ],
       ),
     );

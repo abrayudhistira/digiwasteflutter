@@ -11,7 +11,7 @@ class AuthService {
   // URL untuk registrasi
   final String registerUrl = 'http://192.168.100.142:3000/users/new';
   // URL untuk update profil
-  final String updateUrl = 'http://192.168.100.142:3000/users/edit';
+  //final String updateUrl = 'http://192.168.100.142:3000/users/edit';
 
   // Secret key untuk AES (harus 16, 24, atau 32 karakter; disini kita gunakan 32 karakter)
   final encrypt.Key _key = encrypt.Key.fromUtf8('my32lengthsupersecretnooneknows1');
@@ -86,35 +86,64 @@ class AuthService {
     }
   }
 
+  // Future<bool> updateUser(User user, File? imageFile) async {
+  //   try {
+  //     var request = http.MultipartRequest('PUT', Uri.parse('$updateUrl/${user.id}'));
+
+  //     request.fields['nama_lengkap'] = user.namaLengkap;
+  //     request.fields['username'] = user.username;
+  //     request.fields['nomor_telepon'] = user.nomorTelepon;
+  //     request.fields['email'] = user.email;
+  //     request.fields['password'] = encryptPassword(user.password);
+  //     request.fields['role'] = user.role;
+
+  //     // Debug: Tampilkan data yang akan dikirim
+  //     print("Data yang dikirim untuk update: ${request.fields}");
+
+  //     if (imageFile != null) {
+  //       request.files.add(await http.MultipartFile.fromPath('foto', imageFile.path));
+  //     }
+
+  //     var response = await request.send();
+  //     print("Response Status Code: ${response.statusCode}");
+
+  //     if (response.statusCode == 200) {
+  //       return true;
+  //     } else {
+  //       print('Update Error: Status Code ${response.statusCode}');
+  //       return false;
+  //     }
+  //   } catch (e) {
+  //     print('Update Error: $e');
+  //     return false;
+  //   }
+  // }
+
   Future<bool> updateUser(User user, File? imageFile) async {
     try {
-      var request = http.MultipartRequest('PUT', Uri.parse('$updateUrl/${user.id}'));
+      // -> http://.../users/edit/{id}
+      final uri = Uri.parse('$baseUrl/edit/${user.id}');
+      final request = http.MultipartRequest('PUT', uri);
 
-      request.fields['nama_lengkap'] = user.namaLengkap;
-      request.fields['username'] = user.username;
-      request.fields['nomor_telepon'] = user.nomorTelepon;
-      request.fields['email'] = user.email;
-      request.fields['password'] = encryptPassword(user.password);
-      request.fields['role'] = user.role;
-
-      // Debug: Tampilkan data yang akan dikirim
-      print("Data yang dikirim untuk update: ${request.fields}");
+      // Tambahkan field
+      request.fields
+        ..['nama_lengkap']  = user.namaLengkap
+        ..['username']      = user.username
+        ..['nomor_telepon'] = user.nomorTelepon
+        ..['email']         = user.email
+        ..['password']      = encryptPassword(user.password)
+        ..['role']          = user.role;
 
       if (imageFile != null) {
         request.files.add(await http.MultipartFile.fromPath('foto', imageFile.path));
       }
 
-      var response = await request.send();
-      print("Response Status Code: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        print('Update Error: Status Code ${response.statusCode}');
-        return false;
-      }
+      final streamed = await request.send();
+      final status = streamed.statusCode;
+      print('Update Status Code: $status');
+      return status == 200;
     } catch (e) {
-      print('Update Error: $e');
+      print('Update Exception: $e');
       return false;
     }
   }
@@ -142,6 +171,7 @@ class AuthService {
   }
 
   /// Ambil user dari SharedPreferences
+  /// Ambil id user
   Future<User?> getUserFromPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     String? userData = prefs.getString('user');
