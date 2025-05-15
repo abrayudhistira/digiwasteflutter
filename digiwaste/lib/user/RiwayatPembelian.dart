@@ -24,7 +24,20 @@ class _RiwayatPembelianPageState extends State<RiwayatPembelianPage> {
   @override
   void initState() {
     super.initState();
+    _loadRiwayat();
+  }
+
+  void _loadRiwayat() {
     _futureRiwayat = RiwayatService().fetchAll();
+  }
+
+  Future<void> _refresh() async {
+    // Re-fetch data
+    _loadRiwayat();
+    // Tunggu hingga selesai
+    await _futureRiwayat;
+    // setState untuk rebuild
+    setState(() {});
   }
 
   void _onItemTapped(int index) {
@@ -70,60 +83,70 @@ class _RiwayatPembelianPageState extends State<RiwayatPembelianPage> {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          final riwayats = snapshot.data!;
-          if (riwayats.isEmpty) {
-            return const Center(child: Text('Belum ada riwayat pembelian'));
+
+          // Ambil data lengkap
+          final allRiwayats = snapshot.data!;
+          final idRiwayat = allRiwayats.where((r) => r.idUser == widget.user.id).toList();
+
+          // Filter hanya yang status == 'confirmed'
+          final confirmedRiwayats = idRiwayat
+            .where((r) => r.status.toLowerCase() == 'confirmed')
+            .toList();
+
+          // Jika tidak ada yang confirmed
+          if (confirmedRiwayats.isEmpty) {
+            // Tetap support pull-to-refresh
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 200),
+                  Center(child: Text('Belum ada riwayat pembelian')),
+                ],
+              ),
+            );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: riwayats.length,
-            itemBuilder: (context, index) {
-              final r = riwayats[index];
-              return Card(
-                color: Colors.grey[200],
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Id : ${r.idTransaksi}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tanggal: ${_formatDate(r.tanggal)}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Waktu: ${r.waktu}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Total: Rp${r.total}',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Status: ${r.status}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      Icon(Icons.done_rounded)
-                    ],
+
+          // Tampilkan ListView dari confirmedRiwayats
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: confirmedRiwayats.length,
+              itemBuilder: (context, index) {
+                final r = confirmedRiwayats[index];
+                return Card(
+                  color: Colors.grey[200],
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Id : ${r.idTransaksi}',
+                          style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text('Tanggal: ${_formatDate(r.tanggal)}',
+                          style: const TextStyle(fontSize: 14)),
+                        const SizedBox(height: 4),
+                        Text('Waktu: ${r.waktu}',
+                          style: const TextStyle(fontSize: 14)),
+                        const SizedBox(height: 4),
+                        Text('Total: Rp${r.total}',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text('Status: ${r.status}',
+                          style: const TextStyle(fontSize: 14)),
+                        const Icon(Icons.done_rounded, color: Colors.green),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),

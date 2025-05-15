@@ -90,6 +90,31 @@ class _LokasiBankSampahState extends State<LokasiBankSampah> {
             return Center(child: Text('Error: ${snap.error ?? 'Unknown'}'));
           }
           final banks = snap.data!;
+          if (banks.isEmpty) {
+            // Hanya tampilkan peta kosong, sesuai MapOptions-mu
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 150),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    center: LatLng(-7.797068, 110.370529), // default center
+                    zoom: 13,
+                    minZoom: 5,
+                    maxZoom: 18,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c'],
+                    ),
+                    // no MarkerLayer
+                  ],
+                ),
+              ),
+            );
+          }
           selectedBankName ??= banks.first.namaBankSampah;
 
           // Buat marker list

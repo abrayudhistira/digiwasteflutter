@@ -7,9 +7,9 @@ import '../model/User.dart';
 
 class AuthService {
   // URL untuk operasi login dan pengambilan data user
-  final String baseUrl = 'http://192.168.100.142:3000/users';
+  final String baseUrl = 'http://10.69.5.72:3000/users';
   // URL untuk registrasi
-  final String registerUrl = 'http://192.168.100.142:3000/users/new';
+  final String registerUrl = 'http://10.69.5.72:3000/users/new';
   // URL untuk update profil
   //final String updateUrl = 'http://192.168.100.142:3000/users/edit';
 

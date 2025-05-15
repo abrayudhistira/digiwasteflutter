@@ -120,7 +120,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
       }
     } else {
       // Fallback ke asset
-      avatarImage = const Icon(Icons.account_circle) as ImageProvider<Object>;
+      //avatarImage = const Icon(Icons.account_circle) as ImageProvider<Object>;
+      avatarImage = const AssetImage('assets/default_avatar.png');
     }
     return Scaffold(
       appBar: AppBar(
