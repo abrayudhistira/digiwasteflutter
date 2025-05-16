@@ -69,7 +69,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       role: widget.user.role,
     );
 
-    final success = await _authService.updateUser(updatedUser, _image);
+    final success = await _authService.updateUser(updatedUser, imageFile: _image);
 
     setState(() => _isLoading = false);
 
@@ -108,19 +108,24 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Widget build(BuildContext context) {
     late ImageProvider avatarImage;
     final foto = widget.user.foto;
-    if (foto != null && foto.isNotEmpty) {
-      if (foto.startsWith('data:image')) {
-        // Base64 string → decode ke bytes
-        final base64Str = foto.split(',').last;
-        final bytes = base64Decode(base64Str);
-        avatarImage = MemoryImage(bytes);
+    try {
+      if (foto != null && foto.isNotEmpty) {
+        if (foto.startsWith('data:image')) {
+          final parts = foto.split(',');
+          if (parts.length > 1 && parts[1].isNotEmpty) {
+            final bytes = base64Decode(parts[1]);
+            avatarImage = MemoryImage(bytes);
+          } else {
+            avatarImage = const AssetImage('assets/default_avatar.png');
+          }
+        } else {
+          avatarImage = NetworkImage(foto);
+        }
       } else {
-        // Asumsikan URL
-        avatarImage = NetworkImage(foto);
+        avatarImage = const AssetImage('assets/default_avatar.png');
       }
-    } else {
-      // Fallback ke asset
-      //avatarImage = const Icon(Icons.account_circle) as ImageProvider<Object>;
+    } catch (e) {
+      debugPrint('Error decoding foto base64: $e');
       avatarImage = const AssetImage('assets/default_avatar.png');
     }
     return Scaffold(

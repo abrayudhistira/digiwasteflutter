@@ -24,40 +24,148 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() async {
-    String username = _usernameController.text.trim();
-    String password = _passwordController.text.trim();
+  // void _login() async {
+  //   String username = _usernameController.text.trim();
+  //   String password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username dan password tidak boleh kosong')),
-      );
+  //   if (username.isEmpty || password.isEmpty) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Username dan password tidak boleh kosong')),
+  //     );
+  //     return;
+  //   }
+
+  //   User? user = await _authService.login(username, password);
+
+  //   if (user != null) {
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => Dashboard(user: user),
+  //       ),
+  //     );
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: const Text('Login gagal, periksa kembali username dan password'),
+  //         action: SnackBarAction(
+  //           label: 'Coba Lagi',
+  //           onPressed: () {
+  //             _usernameController.clear();
+  //             _passwordController.clear();
+  //           },
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+
+//   void _login() async {
+//   String username = _usernameController.text.trim();
+//   String password = _passwordController.text.trim();
+
+//   if (username.isEmpty || password.isEmpty) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('Username dan password tidak boleh kosong')),
+//     );
+//     return;
+//   }
+
+//   bool ok = await _authService.login(username, password) ?? false;
+//   if (ok) {
+//     User? user = await _authService.getCurrentUser();
+//     if (user != null) {
+//       Navigator.pushReplacement(
+//         context,
+//         MaterialPageRoute(builder: (_) => Dashboard(user: user)),
+//       );
+//       return;
+//     }
+//   }
+
+//   ScaffoldMessenger.of(context).showSnackBar(
+//     SnackBar(
+//       content: const Text('Login gagal, periksa kembali username dan password'),
+//       action: SnackBarAction(
+//         label: 'Coba Lagi',
+//         onPressed: () {
+//           _usernameController.clear();
+//           _passwordController.clear();
+//         },
+//       ),
+//     ),
+//   );
+// }
+void _login() async {
+  String username = _usernameController.text.trim();
+  String password = _passwordController.text.trim();
+
+  if (username.isEmpty || password.isEmpty) {
+    _showSnackBar('Username dan password tidak boleh kosong');
+    return;
+  }
+
+  try {
+    bool loginSuccess = await _authService.login(username, password);
+    
+    if (!loginSuccess) {
+      _showErrorSnackBar();
       return;
     }
-
-    User? user = await _authService.login(username, password);
-
-    if (user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Dashboard(user: user),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Login gagal, periksa kembali username dan password'),
-          action: SnackBarAction(
-            label: 'Coba Lagi',
-            onPressed: () {
-              _usernameController.clear();
-              _passwordController.clear();
-            },
-          ),
-        ),
-      );
+    
+    User? user = await _authService.getCurrentUser();
+    
+    if (user == null) {
+      print('⚠️ User data not found after successful login');
+      _showErrorSnackBar();
+      return;
     }
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => Dashboard(user: user)),
+    );
+    
+  } catch (e) {
+    print('🚨 Login error: $e');
+    _showErrorSnackBar();
+  }
+}
+
+void _showSnackBar(String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message))
+  );
+}
+
+void _showErrorSnackBar() {
+  _showSnackBar('Login gagal, periksa kembali username dan password');
+}
+
+SnackBar _buildErrorSnackBar() {
+  return SnackBar(
+    content: const Text('Login gagal, periksa kembali username dan password'),
+    action: SnackBarAction(
+      label: 'Coba Lagi',
+      onPressed: () {
+        _usernameController.clear();
+        _passwordController.clear();
+      },
+    ),
+  );
+}
+
+  @override
+  void initState() {
+    super.initState();
+    _authService.getCurrentUser().then((user) {
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Dashboard(user: user)),
+        );
+      }
+    });
   }
 
   @override

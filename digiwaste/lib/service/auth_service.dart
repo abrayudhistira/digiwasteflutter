@@ -1,189 +1,315 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import '../model/User.dart';
 
 class AuthService {
-  // URL untuk operasi login dan pengambilan data user
-  final String baseUrl = 'http://10.69.5.72:3000/users';
-  // URL untuk registrasi
-  final String registerUrl = 'http://10.69.5.72:3000/users/new';
-  // URL untuk update profil
-  //final String updateUrl = 'http://192.168.100.142:3000/users/edit';
+  // Server endpoints
+  static const String baseUrl = 'http://192.168.100.33:3000/users';
+  static const String registerUrl = '$baseUrl/new';
+  
+  // Storage keys
+  static const String _storageUserKey = 'digiwaste';
+  static const String _storageAccessTokenKey = 'digiwaste';
+  static const String _storageRefreshTokenKey = 'digiwaste';
 
-  // Secret key untuk AES (harus 16, 24, atau 32 karakter; disini kita gunakan 32 karakter)
-  final encrypt.Key _key = encrypt.Key.fromUtf8('my32lengthsupersecretnooneknows1');
+  // Encryption configuration
+  static var _encryptionKey = encrypt.Key.fromUtf8('my32lengthsupersecretnooneknows1');
+  final _storage = const FlutterSecureStorage();
 
-  /// Enkripsi password menggunakan AES dalam mode ECB (tanpa IV)
+  /// Encrypt password using AES-ECB
   String encryptPassword(String password) {
-    final encrypter = encrypt.Encrypter(encrypt.AES(_key, mode: encrypt.AESMode.ecb));
-    final encrypted = encrypter.encrypt(password);
-    return encrypted.base64;
+    final encrypter = encrypt.Encrypter(encrypt.AES(_encryptionKey, mode: encrypt.AESMode.ecb));
+    return encrypter.encrypt(password).base64;
   }
 
-  /// Dekripsi password yang terenkripsi
+  /// Decrypt stored password
   String decryptPassword(String encryptedPassword) {
-    final encrypter = encrypt.Encrypter(encrypt.AES(_key, mode: encrypt.AESMode.ecb));
-    return encrypter.decrypt64(encryptedPassword);
+  if (encryptedPassword.isEmpty || encryptedPassword == 'null') {
+    return '[password_tidak_tersedia]';
   }
+  
+  try {
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(_encryptionKey, mode: encrypt.AESMode.ecb)
+    );
+    return encrypter.decrypt64(encryptedPassword);
+  } catch (e) {
+    print('Decryption error: $e');
+    return '[password_terenkripsi_invalid]';
+  }
+}
 
-  /// Login user dengan username dan password
-  Future<User?> login(String username, String password) async {
-    try {
-      // Mengambil semua user
-      final response = await http.get(Uri.parse(baseUrl));
-      print('Response Code (login): ${response.statusCode}');
-      print('Response Body (login): ${response.body}');
+  /// Login with username and password
+//   Future<bool> login(String username, String password) async {
+//   try {
+//     final response = await http.post(
+//       Uri.parse('$baseUrl/login'),
+//       headers: {'Content-Type': 'application/json'},
+//       body: jsonEncode({
+//         'username': username,
+//         'password': encryptPassword(password),
+//       }),
+//     );
 
-      if (response.statusCode == 200) {
-        List<dynamic> users = jsonDecode(response.body);
+//     // Debug: Cetak response server
+//     print('Login Response: ${response.statusCode} ${response.body}');
 
-        // Enkripsi password input menggunakan mode ECB
-        String encryptedPassword = encryptPassword(password);
+//     if (response.statusCode == 200) {
+//       final data = jsonDecode(response.body);
+      
+//       // Validasi struktur response
+//       if (data['user'] == null || data['user'] is! Map<String, dynamic>) {
+//         print('⚠️ Invalid user data from server');
+//         return false;
+//       }
+      
+//       // Simpan data
+//       await _storage.write(key: _storageAccessTokenKey, value: data['digiwaste']);
+//       await _storage.write(key: _storageRefreshTokenKey, value: data['digiwaste']);
+//       await _storage.write(key: _storageUserKey, value: jsonEncode(data['digiwaste']));
+      
+//       return true;
+//     }
+    
+//     return false;
+//   } catch (e) {
+//     print('🚨 Login error: $e');
+//     return false;
+//   }
+// }
 
-        for (var user in users) {
-          if (user['username'] == username && user['password'] == encryptedPassword) {
-            User loggedInUser = User.fromJson(user);
-            await _saveUserToPreferences(loggedInUser);
-            return loggedInUser;
-          }
-        }
-        print('Login Gagal: Username atau password salah');
-        return null;
-      } else {
-        print('Login Gagal: ${response.body}');
-        return null;
+// Future<bool> login(String username, String password) async {
+//   try {
+//     final response = await http.post(
+//       Uri.parse('$baseUrl/login'),
+//       headers: {'Content-Type': 'application/json'},
+//       body: jsonEncode({
+//         'username': username,
+//         'password': encryptPassword(password),
+//       }),
+//     );
+
+//     print('Login Response Status: ${response.statusCode}');
+//     print('Login Response Body: ${response.body}'); // Debug penting
+
+//     if (response.statusCode == 200) {
+//       final Map<String, dynamic> data = jsonDecode(response.body);
+      
+//       // Validasi struktur response
+//       if (!data.containsKey('user')) {
+//         print('⚠️ User data missing in response');
+//         return false;
+//       }
+      
+//       // Simpan data
+//       await _storage.write(key: _storageAccessTokenKey, value: data['accessToken'] ?? '');
+//       await _storage.write(key: _storageRefreshTokenKey, value: data['refreshToken'] ?? '');
+//       // Di AuthService.login
+//       await _storage.write(
+//         key: _storageUserKey, 
+//         value: jsonEncode({
+//           ...data['user'],
+//           'password': data['user']['password'] // Pastikan field ini ada
+//         })
+//       );
+      
+//       // Debug: Cek data yang akan disimpan
+//       print('User data to save: ${data['user']}');
+      
+//       return true;
+//     }
+    
+//     return false;
+//   } catch (e) {
+//     print('🚨 Login error: $e');
+//     return false;
+//   }
+// }
+Future<bool> login(String username, String password) async {
+  try {
+    final encryptedPass = encryptPassword(password);
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': encryptedPass,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final userData = Map<String, dynamic>.from(data['user']);
+      
+      // Inject encrypted password jika tidak ada dari server
+      if (userData['password'] == null) {
+        userData['password'] = encryptedPass;
       }
+      
+      await _storage.write(
+        key: _storageUserKey,
+        value: jsonEncode(userData)
+      );
+      
+      return true;
+    }
+    return false;
+  } catch (e) {
+    print('Login error: $e');
+    return false;
+  }
+}
+  /// User registration
+  Future<User?> register(User user) async {
+    try {
+      final response = await http.post(
+        Uri.parse(registerUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nama_lengkap': user.namaLengkap,
+          'username': user.username,
+          'nomor_telepon': user.nomorTelepon,
+          'email': user.email,
+          'password': encryptPassword(user.password),
+          'role': user.role,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        await _storage.write(key: _storageAccessTokenKey, value: data['digiwaste']);
+        await _storage.write(key: _storageRefreshTokenKey, value: data['digiwaste']);
+        await _storage.write(key: _storageUserKey, value: jsonEncode(data['digiwaste']));
+        return User.fromJson(data['user']);
+      }
+      return null;
     } catch (e) {
-      print('Login Error: $e');
+      print('Registration error: $e');
       return null;
     }
   }
 
-  /// Register user: enkripsi password sebelum dikirim, gunakan registerUrl
-  Future<bool> register(User user) async {
-    try {
-      // Enkripsi password menggunakan mode ECB
-      user.password = encryptPassword(user.password);
-
-      final response = await http.post(
-        Uri.parse(registerUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(user.toJson()),
-      );
-
-      if (response.statusCode == 201) {
-        return true;
-      } else {
-        print('Register Gagal: ${response.body}');
-        return false;
-      }
-    } catch (e) {
-      print('Register Error: $e');
-      return false;
+  /// Get current user from secure storage
+  Future<User?> getCurrentUser() async {
+  final userJson = await _storage.read(key: _storageUserKey);
+  
+  // Debug: Cetak data mentah yang tersimpan
+  print('Raw user data from storage: $userJson');
+  
+  if (userJson == null || userJson.isEmpty) return null;
+  
+  try {
+    final dynamic decodedJson = jsonDecode(userJson);
+    
+    // Debug: Cetak tipe data hasil decode
+    print('Decoded data type: ${decodedJson.runtimeType}');
+    
+    if (decodedJson is! Map<String, dynamic>) {
+      print('⚠️ Invalid user data format. Expected Map, got ${decodedJson.runtimeType}');
+      await _storage.delete(key: _storageUserKey); // Hapus data invalid
+      return null;
     }
+    
+    return User.fromJson(decodedJson);
+  } catch (e) {
+    print('🚨 Error parsing user data: $e');
+    await _storage.delete(key: _storageUserKey); // Hapus data korup
+    return null;
   }
+}
 
-  // Future<bool> updateUser(User user, File? imageFile) async {
-  //   try {
-  //     var request = http.MultipartRequest('PUT', Uri.parse('$updateUrl/${user.id}'));
-
-  //     request.fields['nama_lengkap'] = user.namaLengkap;
-  //     request.fields['username'] = user.username;
-  //     request.fields['nomor_telepon'] = user.nomorTelepon;
-  //     request.fields['email'] = user.email;
-  //     request.fields['password'] = encryptPassword(user.password);
-  //     request.fields['role'] = user.role;
-
-  //     // Debug: Tampilkan data yang akan dikirim
-  //     print("Data yang dikirim untuk update: ${request.fields}");
-
-  //     if (imageFile != null) {
-  //       request.files.add(await http.MultipartFile.fromPath('foto', imageFile.path));
-  //     }
-
-  //     var response = await request.send();
-  //     print("Response Status Code: ${response.statusCode}");
-
-  //     if (response.statusCode == 200) {
-  //       return true;
-  //     } else {
-  //       print('Update Error: Status Code ${response.statusCode}');
-  //       return false;
-  //     }
-  //   } catch (e) {
-  //     print('Update Error: $e');
-  //     return false;
-  //   }
-  // }
-
-  Future<bool> updateUser(User user, File? imageFile) async {
+  /// Update user profile
+  Future<bool> updateUser(User user, {File? imageFile}) async {
     try {
-      // -> http://.../users/edit/{id}
-      final uri = Uri.parse('$baseUrl/edit/${user.id}');
-      final request = http.MultipartRequest('PUT', uri);
-
-      // Tambahkan field
+      final request = http.MultipartRequest('PUT', Uri.parse('$baseUrl/edit/${user.id}'));
+      
+      // Add text fields
       request.fields
-        ..['nama_lengkap']  = user.namaLengkap
-        ..['username']      = user.username
+        ..['nama_lengkap'] = user.namaLengkap
+        ..['username'] = user.username
         ..['nomor_telepon'] = user.nomorTelepon
-        ..['email']         = user.email
-        ..['password']      = encryptPassword(user.password)
-        ..['role']          = user.role;
+        ..['email'] = user.email
+        ..['password'] = encryptPassword(user.password)
+        ..['role'] = user.role;
 
+      // Add image file if provided
       if (imageFile != null) {
         request.files.add(await http.MultipartFile.fromPath('foto', imageFile.path));
       }
 
-      final streamed = await request.send();
-      final status = streamed.statusCode;
-      print('Update Status Code: $status');
-      return status == 200;
+      // Add authorization header
+      final accessToken = await _storage.read(key: _storageAccessTokenKey);
+      request.headers['Authorization'] = 'Bearer $accessToken';
+
+      final response = await request.send();
+      return response.statusCode == 200;
     } catch (e) {
-      print('Update Exception: $e');
+      print('Update error: $e');
       return false;
     }
   }
 
-  /// Ambil data user berdasarkan ID
+  /// Logout user
+  Future<void> logout() async {
+    try {
+      final refreshToken = await _storage.read(key: _storageRefreshTokenKey);
+      if (refreshToken != null) {
+        await http.post(
+          Uri.parse('$baseUrl/logout'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refreshToken': refreshToken}),
+        );
+      }
+    } finally {
+      await _storage.deleteAll();
+    }
+  }
+
+  /// Refresh access token
+  Future<bool> refreshToken() async {
+    final refreshToken = await _storage.read(key: _storageRefreshTokenKey);
+    if (refreshToken == null) return false;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await _storage.write(key: _storageAccessTokenKey, value: data['digiwaste']);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Token refresh error: $e');
+      return false;
+    }
+  }
+
+  /// Get user by ID
   Future<User?> getUserById(int userId) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/$userId'));
+      final accessToken = await _storage.read(key: _storageAccessTokenKey);
+      final response = await http.get(
+        Uri.parse('$baseUrl/$userId'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return User.fromJson(data);
-      } else {
-        return null;
+        return User.fromJson(jsonDecode(response.body));
       }
+      return null;
     } catch (e) {
-      print('Get User Error: $e');
+      print('Get user error: $e');
       return null;
     }
-  }
-
-  /// Simpan user ke SharedPreferences
-  Future<void> _saveUserToPreferences(User user) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('user', jsonEncode(user.toJson()));
-  }
-
-  /// Ambil user dari SharedPreferences
-  /// Ambil id user
-  Future<User?> getUserFromPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? userData = prefs.getString('user');
-    if (userData != null) {
-      return User.fromJson(jsonDecode(userData));
-    }
-    return null;
-  }
-
-  /// Hapus user dari SharedPreferences (Logout)
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.remove('user');
   }
 }

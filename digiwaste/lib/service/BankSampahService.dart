@@ -4,7 +4,7 @@ import 'package:digiwaste/model/BankSampah.dart';
 import 'package:http/http.dart' as http;
 
 class BankSampahService {
-  static const _baseUrl = 'http://10.69.5.72:3000';
+  static const _baseUrl = 'http://192.168.100.33:3000';
 
   Future<List<BankSampah>> fetchAll() async {
     final uri = Uri.parse('$_baseUrl/banksampah');

@@ -147,6 +147,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _register() async {
+    print('>> _register() tapped');
     if (!_formKey.currentState!.validate()) return;
 
     // Cek apakah password dan konfirmasi password sama
@@ -159,7 +160,7 @@ class _RegisterPageState extends State<RegisterPage> {
     String password = _passwordController.text.trim();
     String email = _emailController.text.trim();
 
-    // Buat objek User baru, ID di-set 0 (server akan mengisinya) dan foto null
+    // // Buat objek User baru, ID di-set 0 (server akan mengisinya) dan foto null
     User newUser = User(
       id: 0,
       namaLengkap: fullNameController.text,
@@ -171,17 +172,26 @@ class _RegisterPageState extends State<RegisterPage> {
       foto: null,
     );
 
-    bool success = await _authService.register(newUser);
+    // bool success = await _authService.register(newUser);
 
-    if (success) {
-      // Navigasi ke Dashboard setelah registrasi sukses
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => Dashboard(user: newUser)),
-      );
-    } else {
-      _showErrorDialog("Registrasi gagal");
-    }
+    // if (success) {
+    //   // Navigasi ke Dashboard setelah registrasi sukses
+    //   Navigator.pushReplacement(
+    //     context,
+    //     MaterialPageRoute(builder: (context) => Dashboard(user: newUser)),
+    //   );
+    // } else {
+    //   _showErrorDialog("Registrasi gagal");
+    // }
+    User? registeredUser = await _authService.register(newUser);
+      if (registeredUser != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => Dashboard(user: registeredUser)),
+        );
+      } else {
+        _showErrorDialog("Registrasi gagal");
+      }
   }
 
   void _showErrorDialog(String message) {
