@@ -8,7 +8,7 @@ import '../model/User.dart';
 
 class AuthService {
   // Server endpoints
-  static const String baseUrl = 'http://192.168.100.33:3000/users';
+  static const String baseUrl = 'http://10.100.200.209:3000/users';
   static const String registerUrl = '$baseUrl/new';
   
   // Storage keys

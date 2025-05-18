@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../model/Kategori.dart';
 
 class KategoriService {
-  final String baseUrl = 'http://192.168.100.33:3000';
+  final String baseUrl = 'http://10.100.200.209:3000';
 
   Future<List<Kategori>> getAllKategori() async {
     final response = await http.get(Uri.parse('$baseUrl/live'));
